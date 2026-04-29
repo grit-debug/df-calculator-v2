@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DemFabrika — Giriş</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f5f6fa;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #dde2f0;
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 4px 24px rgba(26,39,68,.1);
+  }
+  .logo-wrap {
+    background: #1a2744;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.75rem;
+    text-align: center;
+  }
+  .logo-wrap img { height: 28px; filter: brightness(0) invert(1); }
+  h1 { font-size: 18px; font-weight: 700; color: #1a2744; margin-bottom: .25rem; }
+  p  { font-size: 13px; color: #8a94b0; margin-bottom: 1.75rem; }
+  .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 1rem; }
+  .field label { font-size: 12px; font-weight: 600; color: #4a5578; }
+  .field input {
+    padding: 10px 12px; border: 1px solid #c4ccde;
+    border-radius: 10px; font-size: 14px; background: #f5f6fa;
+    color: #1a2744; outline: none; transition: border-color .15s;
+  }
+  .field input:focus { border-color: #2d6be4; background: #fff; box-shadow: 0 0 0 3px rgba(45,107,228,.1); }
+  .btn {
+    width: 100%; padding: 11px; background: #1a2744; color: #fff;
+    border: none; border-radius: 10px; font-size: 14px; font-weight: 600;
+    cursor: pointer; margin-top: .5rem; transition: background .15s;
+  }
+  .btn:hover { background: #253460; }
+  .error {
+    background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
+    padding: .6rem .9rem; font-size: 13px; color: #b91c1c;
+    margin-bottom: 1rem; display: none;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo-wrap">
+    <img src="data:image/png;base64,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" alt="DemFabrika">
+  </div>
+  <h1>Hoş geldiniz</h1>
+  <p>Devam etmek için giriş yapın</p>
+
+  <div class="error" id="error-msg"></div>
+
+  <div class="field">
+    <label>E-posta</label>
+    <input type="email" id="email" placeholder="ornek@sirket.com" autocomplete="username">
+  </div>
+  <div class="field">
+    <label>Şifre</label>
+    <input type="password" id="sifre" placeholder="••••••••" autocomplete="current-password">
+  </div>
+  <button class="btn" onclick="girisYap()">Giriş Yap</button>
+</div>
+
+<script>
+// Zaten giriş yapılmışsa yönlendir
+if (localStorage.getItem('df_token')) {
+  window.location.href = '/app.html';
+}
+
+document.getElementById('sifre').addEventListener('keydown', e => {
+  if (e.key === 'Enter') girisYap();
+});
+
+async function girisYap() {
+  const email = document.getElementById('email').value.trim();
+  const sifre = document.getElementById('sifre').value;
+  const errEl = document.getElementById('error-msg');
+  errEl.style.display = 'none';
+
+  if (!email || !sifre) {
+    errEl.textContent = 'E-posta ve şifre gerekli.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, sifre })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.detail || 'Giriş başarısız.';
+      errEl.style.display = 'block';
+      return;
+    }
+    localStorage.setItem('df_token', data.token);
+    localStorage.setItem('df_ad', data.ad);
+    window.location.href = '/app.html';
+  } catch(e) {
+    errEl.textContent = 'Sunucuya bağlanılamadı.';
+    errEl.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>
