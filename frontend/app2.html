@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DemFabrika — Fiyat Hesaplayıcı</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #1a2744; --accent: #2d6be4; --accent-light: #e8effe;
+    --green: #16a34a; --green-bg: #f0fdf4; --green-border: #bbf7d0;
+    --bg: #f5f6fa; --surface: #ffffff; --surface2: #f0f2f8;
+    --border: #dde2f0; --border-strong: #c4ccde;
+    --text: #1a2744; --text-mid: #4a5578; --text-muted: #8a94b0;
+    --radius: 10px; --radius-lg: 14px;
+    --shadow-card: 0 2px 8px rgba(26,39,68,.08), 0 1px 2px rgba(26,39,68,.05);
+  }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+
+  header { background: var(--navy); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 64px; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+  header img { height: 32px; object-fit: contain; mix-blend-mode: lighten; }
+  header .subtitle { font-size: 12px; color: rgba(255,255,255,.45); letter-spacing: .04em; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .header-user { font-size: 12px; color: rgba(255,255,255,.6); }
+  .header-btn {
+    padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    cursor: pointer; border: none; transition: background .15s;
+  }
+  .header-btn.secondary { background: rgba(255,255,255,.1); color: #fff; }
+  .header-btn.secondary:hover { background: rgba(255,255,255,.2); }
+  .header-btn.danger { background: rgba(239,68,68,.2); color: #fca5a5; }
+  .header-btn.danger:hover { background: rgba(239,68,68,.35); }
+
+  /* KULLANICI PANELI */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: var(--radius-lg); padding: 1.75rem;
+    width: 100%; max-width: 440px; box-shadow: 0 8px 32px rgba(0,0,0,.2);
+  }
+  .modal h2 { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 1.25rem; }
+  .modal .field input {
+    background: var(--bg); border: 1px solid var(--border-strong);
+    border-radius: var(--radius); padding: 8px 10px; width: 100%;
+    font-size: 14px; color: var(--text); outline: none;
+  }
+  .modal .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(45,107,228,.1); }
+  .modal-actions { display: flex; gap: 8px; margin-top: 1.25rem; justify-content: flex-end; }
+  .btn-primary { background: var(--navy); color: #fff; border: none; border-radius: var(--radius); padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 8px 18px; font-size: 13px; color: var(--text-mid); cursor: pointer; }
+  .user-list { margin-top: 1rem; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .user-row { display: flex; justify-content: space-between; align-items: center; padding: .6rem 1rem; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .user-row:last-child { border-bottom: none; }
+  .modal-error { font-size: 12px; color: #b91c1c; margin-top: .5rem; display: none; }
+
+  /* KUR BANNER */
+  .kur-banner {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: .6rem 2rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  }
+  .kur-badge {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--green-bg); border: 1px solid var(--green-border);
+    border-radius: var(--radius); padding: .4rem .85rem;
+    font-size: 13px; font-weight: 600; color: var(--green);
+  }
+  .kur-badge .dot-live { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .kur-meta { font-size: 12px; color: var(--text-muted); }
+  .kur-meta span { color: var(--text-mid); font-weight: 500; }
+  .kur-loading { font-size: 13px; color: var(--text-muted); font-style: italic; }
+  .kur-error { font-size: 12px; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius); padding: .35rem .75rem; }
+
+  .page-wrap { max-width: 780px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  .section-label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: .65rem; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; box-shadow: var(--shadow-card); margin-bottom: 1.25rem; }
+  .card-header { font-size: 13px; font-weight: 600; color: var(--text-mid); margin-bottom: 1rem; padding-bottom: .75rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .card-header .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+  .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem; }
+  .mode-card { border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.1rem 1.25rem; cursor: pointer; transition: border-color .15s, background .15s, box-shadow .15s; background: var(--surface); }
+  .mode-card:hover { border-color: var(--accent); background: var(--accent-light); }
+  .mode-card.active { border-color: var(--accent); background: var(--accent-light); box-shadow: 0 0 0 3px rgba(45,107,228,.12); }
+  .mode-card .icon { font-size: 20px; margin-bottom: 6px; }
+  .mode-card .mc-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .mode-card .mc-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  /* INPUT WITH CURRENCY PREFIX */
+  .input-wrap { position: relative; display: flex; align-items: center; }
+  .input-wrap .currency-badge {
+    position: absolute; left: 10px;
+    font-size: 12px; font-weight: 700; color: var(--text-muted);
+    pointer-events: none; user-select: none; z-index: 1;
+  }
+  .input-wrap input { padding-left: 38px !important; }
+
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: .8rem; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { font-size: 12px; color: var(--text-mid); font-weight: 500; }
+  .field input { width: 100%; padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius); font-size: 14px; background: var(--bg); color: var(--text); outline: none; transition: border-color .15s, box-shadow .15s; }
+  .field input:focus { border-color: var(--accent); background: #fff; box-shadow: 0 0 0 3px rgba(45,107,228,.1); }
+  .field input::placeholder { color: var(--text-muted); }
+  .field .tip { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  .lbl-sub { font-size: 10px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+  .toggle-group { display: flex; gap: 8px; margin-bottom: 1rem; }
+  .toggle-btn { flex: 1; padding: 8px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: transparent; font-size: 13px; font-weight: 500; color: var(--text-mid); cursor: pointer; transition: all .15s; }
+  .toggle-btn.active { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .toggle-btn:hover:not(.active) { background: var(--surface2); }
+
+  /* RESULT BOX — shows USD + TRY */
+  .result-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: .7rem 1rem; margin-top: .75rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .result-left { display: flex; flex-direction: column; gap: 2px; }
+  .result-label { font-size: 12px; color: var(--text-muted); }
+  .result-usd { font-size: 17px; font-weight: 700; color: var(--navy); }
+  .result-try { font-size: 12px; color: var(--text-mid); font-weight: 500; }
+
+  /* SUMMARY CARD */
+  .summary-card { background: var(--navy); border-radius: var(--radius-lg); padding: 1.4rem 1.5rem; margin-top: .5rem; }
+  .sum-row { display: flex; justify-content: space-between; align-items: center; padding: .4rem 0; font-size: 14px; color: rgba(255,255,255,.65); border-bottom: 1px solid rgba(255,255,255,.08); }
+  .sum-row:last-of-type { border-bottom: none; }
+  .sum-val { text-align: right; }
+  .sum-val .usd { color: rgba(255,255,255,.9); font-weight: 600; display: block; }
+  .sum-val .try { color: rgba(255,255,255,.45); font-size: 12px; display: block; }
+  .sum-grand { margin-top: .75rem; padding-top: .75rem; border-top: 1px solid rgba(255,255,255,.2); display: flex; justify-content: space-between; align-items: flex-end; }
+  .sum-grand-label { font-size: 13px; color: rgba(255,255,255,.55); font-weight: 500; }
+  .sum-grand-right { text-align: right; }
+  .sum-grand-usd { font-size: 26px; font-weight: 700; color: #fff; display: block; }
+  .sum-grand-try { font-size: 14px; color: rgba(255,255,255,.5); display: block; margin-top: 2px; }
+
+  .reset-btn { margin-top: 1.25rem; background: transparent; border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 8px 18px; font-size: 13px; color: var(--text-muted); cursor: pointer; transition: background .15s, color .15s; }
+  .reset-btn:hover { background: var(--surface2); color: var(--text); }
+  .hidden { display: none !important; }
+  .step-divider { height: 1px; background: var(--border); margin: 1.75rem 0; }
+  .gsm-formula { background: var(--accent-light); border: 1px solid #c5d8f8; border-radius: var(--radius); padding: .55rem .9rem; font-size: 12px; color: var(--accent); margin-bottom: .9rem; display: flex; align-items: center; gap: 6px; }
+
+  /* FİYAT LİSTESİ */
+  .fiyat-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: .25rem; }
+  .fiyat-table thead tr { background: var(--navy); color: #fff; }
+  .fiyat-table thead th { padding: .6rem .9rem; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+  .fiyat-table thead th:not(:first-child) { text-align: right; }
+  .fiyat-table tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  .fiyat-table tbody tr:last-child { border-bottom: none; }
+  .fiyat-table tbody tr:hover { background: var(--accent-light); }
+  .fiyat-table tbody tr.highlight { background: #fffbeb; }
+  .fiyat-table tbody tr.highlight td:first-child { font-weight: 700; color: var(--navy); }
+  .fiyat-table td { padding: .55rem .9rem; color: var(--text-mid); }
+  .fiyat-table td:not(:first-child) { text-align: right; }
+  .fiyat-table td .usd-val { font-weight: 600; color: var(--navy); display: block; }
+  .fiyat-table td .try-val { font-size: 11px; color: var(--text-muted); display: block; }
+  .fiyat-table td .margin-badge { display: inline-block; font-size: 11px; background: var(--surface2); border-radius: 4px; padding: 1px 6px; color: var(--text-muted); }
+  .fiyat-table td.current-row-adet { font-weight: 700; color: var(--navy); }
+  .highlight-row td { background: #f0fdf4 !important; }
+  .highlight-row td .usd-val { color: var(--green); }
+  .fiyat-note { font-size: 11px; color: var(--text-muted); margin-top: .6rem; line-height: 1.6; }
+  .try-prominent { display: block; font-size: 13px; font-weight: 600; color: var(--green); margin-top: 1px; }
+
+  /* SEKME SİSTEMİ */
+  .tabs { display: flex; gap: 4px; padding: .75rem 0; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; }
+  .tab-btn { padding: 8px 20px; border: none; background: transparent; font-size: 14px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-radius: var(--radius); transition: all .15s; }
+  .tab-btn:hover { background: var(--surface2); color: var(--text); }
+  .tab-btn.active { background: var(--navy); color: #fff; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* FİYAT KONTROL */
+  .fc-hero { background: var(--navy); border-radius: var(--radius-lg); padding: 2rem; margin-bottom: 1.5rem; text-align: center; }
+  .fc-hero-price { font-size: 48px; font-weight: 700; color: #fff; margin: .5rem 0; }
+  .fc-hero-try { font-size: 20px; color: rgba(255,255,255,.6); }
+  .fc-hero-label { font-size: 13px; color: rgba(255,255,255,.5); margin-bottom: .25rem; }
+  .fc-hero-adet { font-size: 14px; color: rgba(255,255,255,.7); margin-top: .5rem; }
+  .fc-search { position: relative; margin-bottom: 1rem; }
+  .fc-search input { width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); font-size: 14px; background: var(--surface); color: var(--text); outline: none; }
+  .fc-search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(45,107,228,.1); }
+  .fc-search .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 16px; pointer-events: none; }
+  .fc-dropdown { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: 0 8px 24px rgba(26,39,68,.12); max-height: 280px; overflow-y: auto; display: none; }
+  .fc-dropdown.open { display: block; }
+  .fc-item { padding: .7rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border); transition: background .1s; }
+  .fc-item:last-child { border-bottom: none; }
+  .fc-item:hover { background: var(--accent-light); }
+  .fc-item-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .fc-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .fc-controls { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .fc-controls .field { flex: 1; min-width: 140px; margin-bottom: 0; }
+  .fc-detail-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; margin-top: 1rem; }
+  .fc-detail-panel h3 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 1rem; padding-bottom: .75rem; border-bottom: 1px solid var(--border); }
+</style>
+<script src="/logo.js"></script>
+</head>
+<body>
+
+<header>
+  <img id="main-logo" src="" >
+  <span class="subtitle">Fiyat Hesaplayıcı</span>
+  <div class="header-right">
+    <span class="header-user" id="header-user-ad"></span>
+    <button class="header-btn secondary" onclick="kullaniciPaneliAc()">👤 Kullanıcılar</button>
+    <button class="header-btn danger" onclick="cikisYap()">Çıkış</button>
+  </div>
+</header>
+
+<!-- KULLANICI PANELI MODAL -->
+<div class="modal-overlay" id="kullanici-modal">
+  <div class="modal">
+    <h2>👤 Kullanıcı Yönetimi</h2>
+    <div id="kullanici-listesi" class="user-list"></div>
+    <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <div style="font-size:13px;font-weight:600;color:var(--text-mid);margin-bottom:.75rem">Yeni kullanıcı ekle</div>
+      <div class="field" style="margin-bottom:.6rem"><label>Ad Soyad</label><input type="text" id="yeni-ad" placeholder="Ahmet Yılmaz"></div>
+      <div class="field" style="margin-bottom:.6rem"><label>E-posta</label><input type="email" id="yeni-email" placeholder="ahmet@sirket.com"></div>
+      <div class="field"><label>Şifre</label><input type="password" id="yeni-sifre" placeholder="••••••••"></div>
+      <div class="modal-error" id="kullanici-error"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="kullaniciPaneliKapat()">Kapat</button>
+      <button class="btn-primary" onclick="kullaniciEkle()">Ekle</button>
+    </div>
+  </div>
+</div>
+
+<!-- KUR BANNER -->
+<div class="kur-banner">
+  <div id="kur-loading" class="kur-loading">Döviz kuru yükleniyor…</div>
+  <div id="kur-content" class="hidden" style="display:none; align-items:center; gap:1rem; flex-wrap:wrap;">
+    <div class="kur-badge">
+      <span class="dot-live"></span>
+      <span>1 USD = <strong id="kur-deger">—</strong> ₺</span>
+    </div>
+    <span class="kur-meta">Güncellendi: <span id="kur-tarih">—</span></span>
+    <span class="kur-meta" style="margin-left:auto; font-size:11px;">Kaynak: Frankfurter / ECB</span>
+  </div>
+  <div id="kur-error" class="kur-error hidden">Kur verisi alınamadı — manuel giriş alanı aktif.</div>
+  <div id="kur-manuel-wrap" class="hidden" style="display:none; align-items:center; gap:8px;">
+    <span style="font-size:12px; color:var(--text-mid);">Manuel USD/TRY:</span>
+    <input type="number" id="kur-manuel" placeholder="örn. 38.5" step="0.01"
+      style="width:100px; padding:5px 8px; border:1px solid var(--border-strong); border-radius:var(--radius); font-size:13px; background:var(--bg); color:var(--text); outline:none;"
+      oninput="onManuelKur()">
+  </div>
+</div>
+
+<div class="page-wrap">
+
+  <!-- SEKMELER -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="sekmeAc('hesap-makinesi')">🧮 Hesap Makinesi</button>
+    <button class="tab-btn" onclick="sekmeAc('fiyat-kontrol')">📋 Fiyat Kontrol</button>
+  </div>
+
+  <!-- HESAP MAKİNESİ SEKMESİ -->
+  <div id="tab-hesap-makinesi" class="tab-panel active">
+  <div id="step0">
+    <div class="section-label">Hammadde ölçüm birimi</div>
+    <div class="mode-grid">
+      <div class="mode-card" id="card-metre" onclick="selectMode('metre')">
+        <div class="icon">📏</div>
+        <div class="mc-title">Metre üzerinden</div>
+        <div class="mc-desc">Metre fiyatı girilerek hesaplanır</div>
+      </div>
+      <div class="mode-card" id="card-kg" onclick="selectMode('kg')">
+        <div class="icon">⚖️</div>
+        <div class="mc-title">Kilogram üzerinden</div>
+        <div class="mc-desc">GSM ve kumaş eninden hesaplanır</div>
+      </div>
+    </div>
+
+    <div class="section-label">Ürün bilgileri</div>
+    <div class="card">
+      <div class="row3">
+        <div class="field">
+          <label>Ürün eni (cm)</label>
+          <input type="number" id="urun-en" placeholder="örn. 30" oninput="calc()">
+        </div>
+        <div class="field">
+          <label>Ürün boyu (cm)</label>
+          <input type="number" id="urun-boy" placeholder="örn. 40" oninput="calc()">
+        </div>
+        <div class="field">
+          <label>Sipariş adedi</label>
+          <input type="number" id="urun-adet-siparis" placeholder="örn. 1000" oninput="calc()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="main-content" class="hidden">
+    <div class="step-divider"></div>
+
+    <!-- HAMMADDE -->
+    <div class="section-label">Hammadde maliyeti</div>
+    <div class="card">
+      <div class="card-header"><span class="dot"></span>Ham madde</div>
+
+      <!-- METRE -->
+      <div id="metre-fields">
+        <div class="row2">
+          <div class="field">
+            <label>Metre fiyatı</label>
+            <div class="input-wrap"><span class="currency-badge">USD</span><input type="number" id="metre-fiyat" placeholder="0.00" oninput="calc()"></div>
+          </div>
+          <div class="field">
+            <label>Kumaş eni (cm)</label>
+            <input type="number" id="kumas-en-m" placeholder="örn. 150" oninput="calc()">
+          </div>
+        </div>
+        <div class="field">
+          <label>1 metre şeride kaç ürün giriyor?</label>
+          <input type="number" id="urun-adet-m" placeholder="otomatik hesaplanır" oninput="calc()">
+          <span class="tip" id="tip-m"></span>
+        </div>
+      </div>
+
+      <!-- KG -->
+      <div id="kg-fields" class="hidden">
+        <div class="row2">
+          <div class="field">
+            <label>Kilogram fiyatı</label>
+            <div class="input-wrap"><span class="currency-badge">USD</span><input type="number" id="kg-fiyat" placeholder="0.00" oninput="calc()"></div>
+          </div>
+          <div class="field">
+            <label>Kumaş eni (cm)</label>
+            <input type="number" id="kumas-en-kg" placeholder="örn. 150" oninput="calcMetreKg()">
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Kumaş GSM (g/m²)</label>
+            <input type="number" id="gsm" placeholder="örn. 220" oninput="calcMetreKg()">
+          </div>
+          <div class="field">
+            <label>Metre / KG <span class="lbl-sub">— GSM'den otomatik</span></label>
+            <input type="number" id="metre-kg" placeholder="otomatik hesaplanır" oninput="manualMetreKg()">
+            <span class="tip" id="tip-metrekg"></span>
+          </div>
+        </div>
+        <div class="gsm-formula">
+          <span>📐</span>
+          <span>Metre/KG = 1.000.000 ÷ (GSM × kumaş eni)</span>
+        </div>
+        <div class="field">
+          <label>1 metre şeride kaç ürün giriyor?</label>
+          <input type="number" id="urun-adet-kg" placeholder="otomatik hesaplanır" oninput="calc()">
+          <span class="tip" id="tip-kg"></span>
+        </div>
+      </div>
+
+      <div class="result-box">
+        <div class="result-left">
+          <span class="result-label">Birim kumaş maliyeti</span>
+          <span class="result-usd" id="res-kumas-usd">— $</span>
+          <span class="result-try" id="res-kumas-try"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BASKI -->
+    <div class="section-label">Baskı maliyeti</div>
+    <div class="card">
+      <div class="card-header"><span class="dot"></span>Baskı</div>
+      <div class="toggle-group">
+        <button class="toggle-btn active" id="baski-yok-btn" onclick="toggleBaski(false)">Baskı yok</button>
+        <button class="toggle-btn" id="baski-var-btn" onclick="toggleBaski(true)">Baskı var</button>
+      </div>
+      <div id="baski-detay" class="hidden">
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="btn-subli" onclick="selectBaskiTip('sublimation')">Süblimasyon</button>
+          <button class="toggle-btn" id="btn-dtf" onclick="selectBaskiTip('dtf')">DTF</button>
+        </div>
+
+        <!-- SÜBLİMASYON -->
+        <div id="subli-fields">
+          <div class="row2">
+            <div class="field">
+              <label>Süblimasyon fiyatı ($/mt²)</label>
+              <div class="input-wrap"><span class="currency-badge">USD</span><input type="number" id="baski-fiyat" placeholder="0.00" oninput="calc()"></div>
+            </div>
+            <div class="field">
+              <label>1 metre şeride kaç baskı giriyor?</label>
+              <input type="number" id="baski-adet" placeholder="otomatik" oninput="calc()">
+              <span class="tip" id="tip-baski"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- DTF -->
+        <div id="dtf-fields" class="hidden">
+          <div class="gsm-formula" style="margin-bottom:1rem">
+            <span>🖨️</span>
+            <span>Her baskı bölgesi için ayrı en×boy girin. Baskı adedi otomatik sayılır, press maliyeti × baskı adedi uygulanır.</span>
+          </div>
+
+          <div style="font-size:12px;font-weight:600;color:var(--text-mid);margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.05em;">DTF Baskı</div>
+          <div class="row3" style="margin-bottom:.5rem">
+            <div class="field">
+              <label>Referans alan eni (cm)</label>
+              <input type="number" id="dtf-ref-en" value="58" oninput="calc()">
+            </div>
+            <div class="field">
+              <label>Referans alan boyu (cm)</label>
+              <input type="number" id="dtf-ref-boy" value="100" oninput="calc()">
+            </div>
+            <div class="field">
+              <label>Referans alan fiyatı ($)</label>
+              <div class="input-wrap"><span class="currency-badge">USD</span><input type="number" id="dtf-ref-fiyat" value="2.5" oninput="calc()"></div>
+            </div>
+          </div>
+
+          <div style="font-size:12px;color:var(--text-mid);font-weight:500;margin-bottom:.4rem">Baskı bölgeleri</div>
+          <div id="dtf-bolgeler"></div>
+          <button type="button" onclick="dtfBolgeEkle()" style="
+            margin-bottom:.85rem; background:var(--accent-light); border:1px dashed var(--accent);
+            border-radius:var(--radius); padding:6px 14px; font-size:12px; color:var(--accent);
+            font-weight:600; cursor:pointer; width:100%;">+ Baskı bölgesi ekle</button>
+
+          <div class="result-box" style="margin-bottom:1rem">
+            <div class="result-left">
+              <span class="result-label">DTF baskı maliyeti (birim, tüm bölgeler)</span>
+              <span class="result-usd" id="res-dtf-baski-usd">— $</span>
+              <span class="result-try" id="res-dtf-baski-try"></span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);text-align:right;line-height:1.7" id="dtf-baski-formul"></div>
+          </div>
+
+          <div style="font-size:12px;font-weight:600;color:var(--text-mid);margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.05em;">Press</div>
+          <div class="row2">
+            <div class="field">
+              <label>Günlük mesai (dk)</label>
+              <input type="number" id="press-mesai" value="450" oninput="calc()">
+            </div>
+            <div class="field">
+              <label>Günlük eleman maaşı (₺)</label>
+              <div class="input-wrap"><span class="currency-badge">₺</span><input type="number" id="press-maas" value="3000" oninput="calc()"></div>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label>Yerleştirme süresi (sn)</label>
+              <input type="number" id="press-yerlestirme" placeholder="örn. 15" oninput="calc()">
+            </div>
+            <div class="field">
+              <label>Press süresi (sn)</label>
+              <input type="number" id="press-sure" placeholder="örn. 20" oninput="calc()">
+            </div>
+          </div>
+          <div class="result-box" style="margin-bottom:1rem">
+            <div class="result-left">
+              <span class="result-label">Press maliyeti (birim)</span>
+              <span class="result-usd" id="res-press-usd">— $</span>
+              <span class="result-try" id="res-press-try"></span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);text-align:right;line-height:1.7" id="press-formul"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-box">
+        <div class="result-left">
+          <span class="result-label">Birim baskı maliyeti</span>
+          <span class="result-usd" id="res-baski-usd">— $</span>
+          <span class="result-try" id="res-baski-try"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ÜRETİM -->
+    <div class="section-label">Üretim maliyeti</div>
+    <div class="card">
+      <div class="card-header"><span class="dot"></span>Üretim kalemleri</div>
+      <div class="row3">
+        <div class="field"><label>Dikim ($)</label><div class="input-wrap"><span class="currency-badge">$</span><input type="number" id="p-dikim" placeholder="0" oninput="calc()"></div></div>
+        <div class="field"><label>Kesim ($)</label><div class="input-wrap"><span class="currency-badge">$</span><input type="number" id="p-kesim" placeholder="0" oninput="calc()"></div></div>
+        <div class="field"><label>Paket ($)</label><div class="input-wrap"><span class="currency-badge">$</span><input type="number" id="p-paket" placeholder="0" oninput="calc()"></div></div>
+        <div class="field"><label>Dolum ($)</label><div class="input-wrap"><span class="currency-badge">$</span><input type="number" id="p-dolum" placeholder="0" oninput="calc()"></div></div>
+        <div class="field"><label>Astar / Tela ($)</label><div class="input-wrap"><span class="currency-badge">$</span><input type="number" id="p-astar" placeholder="0" oninput="calc()"></div></div>
+        <div class="field"><label>Cırt ($)</label><div class="input-wrap"><span class="currency-badge">$</span><input type="number" id="p-cirt" placeholder="0" oninput="calc()"></div></div>
+        <div class="field"><label>Biye ($)</label><div class="input-wrap"><span class="currency-badge">$</span><input type="number" id="p-biye" placeholder="0" oninput="calc()"></div></div>
+        <div class="field"><label>Lastik ($)</label><div class="input-wrap"><span class="currency-badge">$</span><input type="number" id="p-lastik" placeholder="0" oninput="calc()"></div></div>
+        <div class="field"><label>Fermuar ($)</label><div class="input-wrap"><span class="currency-badge">$</span><input type="number" id="p-fermuar" placeholder="0" oninput="calc()"></div></div>
+        <div class="field"><label>Saçak ($)</label><div class="input-wrap"><span class="currency-badge">$</span><input type="number" id="p-sacak" placeholder="0" oninput="calc()"></div></div>
+        <div class="field"><label>Fire / Diğer ($)</label><div class="input-wrap"><span class="currency-badge">$</span><input type="number" id="p-fire" placeholder="0" oninput="calc()"></div></div>
+      </div>
+
+      <!-- EK KALEMLER -->
+      <div id="ekstra-kalemler" style="margin-top:.5rem"></div>
+      <button type="button" onclick="ekKalemEkle()" style="
+        margin-top:.4rem; margin-bottom:.75rem; background:var(--accent-light);
+        border:1px dashed var(--accent); border-radius:var(--radius);
+        padding:6px 14px; font-size:12px; color:var(--accent);
+        font-weight:600; cursor:pointer; width:100%;">+ Yeni üretim kalemi ekle</button>
+
+      <div class="result-box">
+        <div class="result-left">
+          <span class="result-label">Toplam üretim maliyeti</span>
+          <span class="result-usd" id="res-uretim-usd">— $</span>
+          <span class="result-try" id="res-uretim-try"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ÖZET -->
+    <div class="section-label">Maliyet özeti</div>
+    <div class="summary-card">
+      <div class="sum-row">
+        <span>Hammadde maliyeti</span>
+        <div class="sum-val"><span class="usd" id="sum-kumas-usd">—</span><span class="try" id="sum-kumas-try"></span></div>
+      </div>
+      <div class="sum-row">
+        <span>Baskı maliyeti</span>
+        <div class="sum-val"><span class="usd" id="sum-baski-usd">—</span><span class="try" id="sum-baski-try"></span></div>
+      </div>
+      <div class="sum-row">
+        <span>Üretim maliyeti</span>
+        <div class="sum-val"><span class="usd" id="sum-uretim-usd">—</span><span class="try" id="sum-uretim-try"></span></div>
+      </div>
+      <div class="sum-grand">
+        <span class="sum-grand-label">Birim maliyet (toplam)</span>
+        <div class="sum-grand-right">
+          <span class="sum-grand-usd" id="sum-total-usd">—</span>
+          <span class="sum-grand-try" id="sum-total-try"></span>
+        </div>
+      </div>
+    </div>
+
+    <button class="reset-btn" onclick="resetAll()">↺ Sıfırla</button>
+
+    <!-- FİYAT LİSTESİ -->
+    <div id="fiyat-listesi-wrap" class="hidden">
+      <div class="step-divider"></div>
+      <div class="section-label">Fiyat listesi</div>
+      <div class="card" style="padding: 0; overflow: hidden;">
+        <table class="fiyat-table">
+          <thead>
+            <tr id="fiyat-thead-row">
+              <th>Adet</th>
+              <th>Ürün maliyeti (+%5)</th>
+              <th id="th-dtf-baski" class="hidden">DTF baskı (+%5)</th>
+              <th>Kar Marjı</th>
+              <th>Birim Satış Fiyatı</th>
+              <th>Toplam</th>
+            </tr>
+          </thead>
+          <tbody id="fiyat-tbody"></tbody>
+        </table>
+        <div style="padding: .75rem 1rem; border-top: 1px solid var(--border);">
+          <div class="fiyat-note">
+            <strong>Ürün maliyeti (+%5):</strong> (Hammadde + Üretim) × 1.05 &nbsp;|&nbsp;
+            <strong>DTF baskı (+%5):</strong> DTF birim maliyet × 1.05 (yalnızca DTF seçiliyse görünür) &nbsp;|&nbsp;
+            <strong>Satış fiyatı:</strong> Her kalem ayrı ayrı × (1 + Kar Marjı%) → toplanır &nbsp;|&nbsp;
+            Sarı satır: girilen sipariş adedine en yakın basamak
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KAYDET & EXPORT -->
+    <div class="step-divider"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.5rem">
+      <button onclick="hesabiKaydet()" style="
+        flex:1;min-width:160px;padding:10px 16px;background:var(--navy);color:#fff;
+        border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;">
+        💾 Bu hesabı kaydet
+      </button>
+      <button onclick="exportExcel()" style="
+        flex:1;min-width:160px;padding:10px 16px;background:#16a34a;color:#fff;
+        border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;">
+        📊 Excel'e aktar
+      </button>
+      <button onclick="exportPDF()" style="
+        flex:1;min-width:160px;padding:10px 16px;background:#b45309;color:#fff;
+        border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;">
+        📄 PDF teklif oluştur
+      </button>
+    </div>
+
+    <!-- GEÇMİŞ -->
+    <div id="gecmis-wrap" class="hidden">
+      <div class="section-label">Kayıtlı hesaplar</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="gecmis-liste"></div>
+      </div>
+      <div class="step-divider"></div>
+    </div>
+
+  </div><!-- /tab-hesap-makinesi -->
+
+  <!-- FİYAT KONTROL SEKMESİ -->
+  <div id="tab-fiyat-kontrol" class="tab-panel">
+
+    <!-- ARAMA -->
+    <div class="section-label">Ürün seç</div>
+    <div class="fc-search">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="fc-ara" placeholder="Ürün adı ile arayın…" oninput="fcAra()" autocomplete="off">
+    </div>
+    <div class="fc-dropdown" id="fc-dropdown"></div>
+
+    <!-- SEÇİLEN ÜRÜN + KONTROLLER -->
+    <div id="fc-secili" class="hidden">
+      <div class="card" style="margin-bottom:1rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--navy)" id="fc-urun-adi-goster"></div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="fc-versiyon-meta"></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select id="fc-versiyon-sec" onchange="fcVersiyonSec()"
+              style="padding:6px 10px;border:1px solid var(--border-strong);border-radius:var(--radius);font-size:13px;background:var(--bg);color:var(--text);outline:none">
+            </select>
+            <button onclick="fcDetayAc()" class="btn-ghost" style="font-size:12px;padding:6px 12px">
+              ✏️ Maliyet Detayları
+            </button>
+            <a id="fc-excel-btn" href="#" target="_blank"
+              style="padding:6px 12px;background:#16a34a;color:#fff;border-radius:var(--radius);font-size:12px;font-weight:600;text-decoration:none">
+              📊 Excel
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADET GİRİŞİ -->
+      <div class="fc-controls">
+        <div class="field">
+          <label>Sipariş adedi</label>
+          <input type="number" id="fc-adet" placeholder="örn. 1000" oninput="fcHesapla()">
+        </div>
+        <div class="field">
+          <label>USD/TRY kuru</label>
+          <div class="kur-badge" style="height:38px;font-size:13px" id="fc-kur-badge">
+            <span class="dot-live"></span>
+            <span id="fc-kur-goster">Yükleniyor…</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- HERO FİYAT -->
+      <div class="fc-hero" id="fc-hero" style="display:none">
+        <div class="fc-hero-label">Seçilen adede karşılık birim satış fiyatı</div>
+        <div class="fc-hero-price" id="fc-hero-usd">—</div>
+        <div class="fc-hero-try" id="fc-hero-try">—</div>
+        <div class="fc-hero-adet" id="fc-hero-adet"></div>
+      </div>
+
+      <!-- FİYAT TABLOSU -->
+      <div class="section-label" style="margin-top:.5rem">Tam fiyat listesi</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="fiyat-table" id="fc-fiyat-table">
+          <thead>
+            <tr>
+              <th>Adet</th>
+              <th>Kar Marjı</th>
+              <th>Birim Satış ($)</th>
+              <th>Birim Satış (₺)</th>
+              <th>Toplam ($)</th>
+              <th>Toplam (₺)</th>
+            </tr>
+          </thead>
+          <tbody id="fc-fiyat-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- MALİYET DETAY PANELİ -->
+      <div class="fc-detail-panel hidden" id="fc-detail-panel">
+        <h3>✏️ Maliyet Detayları — <span id="fc-detail-baslik"></span></h3>
+        <div id="fc-detail-icerik"></div>
+        <div style="display:flex;gap:8px;margin-top:1rem;justify-content:flex-end">
+          <button class="btn-ghost" onclick="fcDetayKapat()">İptal</button>
+          <button class="btn-primary" onclick="fcDetayKaydet()">💾 Yeni versiyon olarak kaydet</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-fiyat-kontrol -->
+
+</div><!-- /page-wrap -->
+
+
+<script src="/app_p1.js"></script>
+<script src="/app_p2.js"></script>
+<script src="/app_p3.js"></script>
+<script src="/app_p4.js"></script>
+<script src="/app_p5.js"></script>
+</body>
+</html>
